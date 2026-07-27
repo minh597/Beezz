@@ -254,7 +254,8 @@ end)() then
     end
 
     local get_start_position = function()
-        return Vector3.new(20, 20, 20)
+        local pos = getgenv().PlacePosition or {x = 20, y = 20, z = 20}
+        return Vector3.new(pos.x, pos.y, pos.z)
     end
 
     local preload_unit_data = function()

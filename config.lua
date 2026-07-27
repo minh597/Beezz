@@ -28,3 +28,10 @@ getgenv().autosell_rare_shiny = false
 getgenv().autosell_epic_shiny = false
 getgenv().autosell_legendary = false
 getgenv().autosell_legendary_shiny = false
+
+-- Vị trí đặt unit (Vector3)
+getgenv().PlacePosition = {
+    x = 20,
+    y = 20,
+    z = 20,
+}
