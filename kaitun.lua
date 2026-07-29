@@ -1,18 +1,104 @@
 local Config = getgenv().Config or {}
 
-local RS = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
-local Remote = RS.Nodes.Network.NetworkEvents._updateNode
+local function ClaimCode(code)
+    ReplicatedStorage.Nodes.Network.NetworkEvents._updateNode:FireServer(
+        {Type = "Post"},
+        "CLAIM_CODE_RequestNODE",
+        1,
+        code
+    )
+end
+local function RedeemCodes()
+    local html = game:HttpGet(
+        "https://www.eurogamer.net/anime-expeditions-codes"
+    )
+
+    local all = {}
+
+    for code in html:gmatch("<strong>(.-)</strong>") do
+        table.insert(all, code)
+    end
+
+    for i = 4, #all do
+        ClaimCode(all[i])
+        task.wait(1.5)
+    end
+end
 
 
-function getChallengeData()
+if Config.RedeemCode then
+    RedeemCodes()
+end
+
+
+local function ParseChallenge(value)
+    local Type, Index = value:match("(%a+)(%d+)")
+
+    if not Type or not Index then
+        warn("Invalid challenge format:", value)
+        return
+    end
+
+    return Type, tonumber(Index)
+end
+
+
+local function GetChallengeStatus(Type, Index)
+
+    local ChallengeInfo = require(
+        ReplicatedStorage.Shared.Information.ChallengeInfo
+    )
+
     local Dependencies = require(
-        RS.FusionPackage.Dependencies
+        ReplicatedStorage.FusionPackage.Dependencies
+    )
+
+    local Data = Dependencies.PlayerData
+        ._EXTREMELY_DANGEROUS_usedAsValue
+        .ChallengeData
+
+
+    local attemptsTable =
+        Data.DailyClearHistory[Type] or {}
+
+    local clearTable =
+        Data.ClearHistory[Type] or {}
+
+
+    local attempts = ChallengeInfo:GetDailyAttemptsLeft(
+        attemptsTable,
+        Type,
+        tostring(Index),
+        ChallengeInfo
+    )
+
+
+    local ready = ChallengeInfo:IsChallengeAvailable(
+        clearTable,
+        attemptsTable,
+        Type,
+        tostring(Index),
+        ChallengeInfo
+    )
+
+
+    return ready, attempts
+end
+
+
+
+local function getChallengeData()
+
+    local Dependencies = require(
+        ReplicatedStorage.FusionPackage.Dependencies
     )
 
     local raw = Dependencies.ChallengeData
         ._EXTREMELY_DANGEROUS_usedAsValue
+
 
     local result = {
         Daily = {},
@@ -20,78 +106,136 @@ function getChallengeData()
         Regular = {}
     }
 
-    for _, typeName in ipairs({"Daily","Weekly","Regular"}) do
-        for i, v in ipairs(raw[typeName] or {}) do
-            table.insert(result[typeName], {
-                MapName = v.MapName,
-                ActName = v.ActName,
-                Index = i
-            })
+
+    local function parse(list, target, addIndex)
+
+        for i, data in ipairs(list or {}) do
+
+            local item = {
+                MapName = data.MapName,
+                ActName = data.ActName
+            }
+
+            if addIndex then
+                item.Index = i
+            end
+
+            table.insert(target, item)
         end
     end
+
+
+    parse(raw.Daily, result.Daily)
+    parse(raw.Weekly, result.Weekly)
+    parse(raw.Regular, result.Regular, true)
+
 
     writefile(
         "ChallengeData.json",
         HttpService:JSONEncode(result)
     )
 
+
     return result
 end
 
 
-function RequestMatchmaking(data, typeName, index)
-    local challenge = data[typeName][index]
 
-    if not challenge then return end
+local function RequestMatchmaking(Type, Index)
 
-    Remote:FireServer(
-        {Type = "Post"},
+    if not isfile("ChallengeData.json") then
+        print("Creating ChallengeData.json...")
+        getChallengeData()
+    end
+
+
+    local data = HttpService:JSONDecode(
+        readfile("ChallengeData.json")
+    )
+
+
+    local challenge = data[Type][Index]
+
+
+    if not challenge then
+        warn(
+            "Challenge data not found:",
+            Type,
+            Index
+        )
+        return
+    end
+
+
+    ReplicatedStorage.Nodes.Network.NetworkEvents._updateNode:FireServer(
+        {
+            Type = "Post"
+        },
         "REQUEST_ENTER_MATCHMAKING_RequestNODE",
         1,
         {
             Difficulty = "Hard",
-            ChallengeIndex = challenge.Index,
+            ChallengeIndex = challenge.Index or Index,
             ActName = challenge.ActName,
             Gamemode = "Challenge",
             MapName = challenge.MapName,
-            ChallengeType = typeName
+            ChallengeType = Type
         }
     )
 end
 
 
-function AutoChallenge()
-    local data = getChallengeData()
 
-    local choose = Config.Challenge
+local function AutoChallenge()
 
-    if choose == "All" then
-        for typeName, list in pairs(data) do
-            for i = 1, #list do
-                RequestMatchmaking(data, typeName, i)
-                task.wait(1)
+    if not Config.AutoChallenge then
+        return
+    end
+
+
+    for _, challenge in ipairs(Config.Challenge) do
+
+        local Type, Index = ParseChallenge(challenge)
+
+        if Type then
+
+            local ready, attempts =
+                GetChallengeStatus(Type, Index)
+
+
+            print(
+                Type,
+                Index,
+                "| Attempts:",
+                attempts,
+                "| Ready:",
+                ready
+            )
+
+
+            if Config.MatchMaking
+            and ready
+            and attempts > 0 then
+
+                print(
+                    "Entering challenge:",
+                    Type,
+                    Index
+                )
+
+
+                RequestMatchmaking(
+                    Type,
+                    Index
+                )
+
+
+                task.wait(2)
             end
         end
-        return
-    end
-
-
-    if choose == "Daily" or choose == "Weekly" then
-        RequestMatchmaking(data, choose, 1)
-        return
-    end
-
-
-    local index = tonumber(
-        choose:match("%d+")
-    )
-
-    if choose:find("Regular") and index then
-        RequestMatchmaking(data, "Regular", index)
     end
 end
 
 
-if Config.AutoChallenge and Config.Matchmaking then
-    AutoChallenge()
-end
+
+AutoChallenge()
