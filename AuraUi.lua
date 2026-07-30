@@ -1,5 +1,5 @@
 --[[
-Aura Pro UI Library - Upgraded Edition with Native KeySystem
+Aura Pro UI Library - Upgraded Edition with Native Key System & Scaled UI Engine
 --]]
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,14 +13,11 @@ or (CoreGui:FindFirstChild("RobloxGui") and CoreGui)
 or (LocalPlayer and LocalPlayer:WaitForChild("PlayerGui"))
 or CoreGui
 
+-- Xóa instance cũ để tránh trùng lặp
 local PreexistingInstance = CachedParent:FindFirstChild("Aura_Pro_UI")
-if PreexistingInstance then
-    PreexistingInstance:Destroy()
-end
+if PreexistingInstance then PreexistingInstance:Destroy() end
 local PreexistingKey = CachedParent:FindFirstChild("Aura_KeySystem_UI")
-if PreexistingKey then
-    PreexistingKey:Destroy()
-end
+if PreexistingKey then PreexistingKey:Destroy() end
 
 local AuraPro = {}
 AuraPro.Themes = {
@@ -84,13 +81,14 @@ local function MakeDraggable(Frame, HandleFrame)
     end)
 end
 
---- NATIVE KEY SYSTEM FUNCTION
+--- KEY SYSTEM (Hiển thị bắt buộc đầu tiên dưới dạng cửa sổ độc lập có Scale tự động)
 function AuraPro:CreateKeySystem(Config)
     Config = Config or {}
     local TitleText = Config.Name or "Aura UI - Key System"
     local CorrectKey = Config.Key or "AuraPro2026"
     local LinkToGet = Config.Link or ""
     local SelectedTheme = Config.Theme or AuraPro.Themes.Dark
+    local UserScale = (Config.Scale or 1.0) * 1.1 -- Đẩy scale mặc định lên thêm 1 tí cho rõ nét
     local Callback = Config.Callback or function() end
 
     local KeyGui = Instance.new("ScreenGui")
@@ -100,14 +98,32 @@ function AuraPro:CreateKeySystem(Config)
     KeyGui.Parent = CachedParent
 
     local MainFrame = Instance.new("Frame", KeyGui)
-    MainFrame.Size = UDim2.new(0, 360, 0, 210)
-    MainFrame.Position = UDim2.new(0.5, -180, 0.5, -105)
+    MainFrame.Size = UDim2.new(0, 380, 0, 220)
+    MainFrame.Position = UDim2.new(0.5, -190, 0.5, -110)
     MainFrame.BackgroundColor3 = SelectedTheme.Background
     Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
     local Stroke = Instance.new("UIStroke", MainFrame)
     Stroke.Color = SelectedTheme.Border
     Stroke.Thickness = 1.2
+
+    -- Scale Engine cho Key System
+    local KeyUIScale = Instance.new("UIScale", MainFrame)
+    local function UpdateKeyScale()
+        local Camera = Workspace.CurrentCamera
+        local ViewportScale = 1
+        if Camera then
+            local ViewSize = Camera.ViewportSize
+            if ViewSize.X < 440 or ViewSize.Y < 280 then
+                ViewportScale = math.min(ViewSize.X / 440, ViewSize.Y / 280)
+            end
+        end
+        KeyUIScale.Scale = UserScale * ViewportScale
+    end
+    UpdateKeyScale()
+    if Workspace.CurrentCamera then
+        Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateKeyScale)
+    end
 
     local TopBar = Instance.new("Frame", MainFrame)
     TopBar.Size = UDim2.new(1, -16, 0, 36)
@@ -130,7 +146,7 @@ function AuraPro:CreateKeySystem(Config)
     KeyBox.Size = UDim2.new(1, -24, 0, 38)
     KeyBox.Position = UDim2.new(0, 12, 0, 58)
     KeyBox.BackgroundColor3 = SelectedTheme.Element
-    KeyBox.PlaceholderText = "Enter your key here..."
+    KeyBox.PlaceholderText = "Nhập Key vào đây..."
     KeyBox.PlaceholderColor3 = SelectedTheme.SubText
     KeyBox.Text = ""
     KeyBox.TextColor3 = SelectedTheme.Text
@@ -142,7 +158,7 @@ function AuraPro:CreateKeySystem(Config)
     SubmitBtn.Size = UDim2.new(1, -24, 0, 36)
     SubmitBtn.Position = UDim2.new(0, 12, 0, 106)
     SubmitBtn.BackgroundColor3 = SelectedTheme.Accent
-    SubmitBtn.Text = "SUBMIT KEY"
+    SubmitBtn.Text = "XÁC NHẬN KEY"
     SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     SubmitBtn.TextSize = 12
     SubmitBtn.Font = Enum.Font.GothamBold
@@ -152,7 +168,7 @@ function AuraPro:CreateKeySystem(Config)
     GetKeyBtn.Size = UDim2.new(1, -24, 0, 32)
     GetKeyBtn.Position = UDim2.new(0, 12, 0, 150)
     GetKeyBtn.BackgroundColor3 = SelectedTheme.Element
-    GetKeyBtn.Text = "GET KEY"
+    GetKeyBtn.Text = "LẤY KEY"
     GetKeyBtn.TextColor3 = SelectedTheme.SubText
     GetKeyBtn.TextSize = 11
     GetKeyBtn.Font = Enum.Font.GothamMedium
@@ -160,16 +176,16 @@ function AuraPro:CreateKeySystem(Config)
 
     SubmitBtn.MouseButton1Click:Connect(function()
         if KeyBox.Text == CorrectKey then
-            SubmitBtn.Text = "SUCCESS!"
+            SubmitBtn.Text = "THÀNH CÔNG!"
             SubmitBtn.BackgroundColor3 = SelectedTheme.Success
             task.wait(0.5)
             KeyGui:Destroy()
-            pcall(Callback)
+            pcall(Callback) -- Chuyển tiếp mở giao diện chính sau khi đúng Key
         else
-            SubmitBtn.Text = "INVALID KEY!"
+            SubmitBtn.Text = "SAI KEY!"
             SubmitBtn.BackgroundColor3 = SelectedTheme.Danger
             task.wait(1)
-            SubmitBtn.Text = "SUBMIT KEY"
+            SubmitBtn.Text = "XÁC NHẬN KEY"
             SubmitBtn.BackgroundColor3 = SelectedTheme.Accent
         end
     end)
@@ -177,15 +193,16 @@ function AuraPro:CreateKeySystem(Config)
     GetKeyBtn.MouseButton1Click:Connect(function()
         if setclipboard then
             setclipboard(LinkToGet)
-            GetKeyBtn.Text = "COPIED LINK TO CLIPBOARD!"
+            GetKeyBtn.Text = "ĐÃ COPY LINK LẤY KEY!"
             task.wait(2)
-            GetKeyBtn.Text = "GET KEY"
+            GetKeyBtn.Text = "LẤY KEY"
         else
-            GetKeyBtn.Text = "Executor does not support clipboard"
+            GetKeyBtn.Text = "Executor không hỗ trợ sao chép"
         end
     end)
 end
 
+--- MAIN WINDOW ENGINE
 function AuraPro:CreateWindow(Config)
 Config = Config or {}
 local TitleText = Config.Name or "Aura UI Pro"
@@ -196,7 +213,8 @@ local ToggleKey = Config.ToggleKey or Enum.KeyCode.RightControl
 
 local BaseWidth = Config.Width or 640
 local BaseHeight = Config.Height or 440
-local UserScale = Config.Scale or 1.0
+-- Mặc định tăng tỉ lệ Scale lên thêm một chút (nhân 1.1) theo yêu cầu giao diện to rõ, sắc nét hơn
+local UserScale = (Config.Scale or 1.0) * 1.1
 
 local SavedData = {}
 if SaveConfigEnabled and readfile and isfile and isfile(ConfigFileName) then
@@ -292,6 +310,7 @@ local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Color = SelectedTheme.Border
 MainStroke.Thickness = 1.2
 
+-- UNIFORM RESPONSIVE SCALE ENGINE CHO TOÀN BỘ BUTTON, TOGGLE, SLIDER BÊN TRONG
 local MainUIScale = Instance.new("UIScale", MainFrame)
 
 local function UpdateGlobalScale()
@@ -432,7 +451,7 @@ Instance.new("UICorner", PagesArea).CornerRadius = UDim.new(0, 8)
 local WindowObj = { CurrentTab = nil, Tabs = {} }
 
 function WindowObj:SetScale(NewScale)
-    UserScale = math.clamp(NewScale or 1.0, 0.5, 2.0)
+    UserScale = math.clamp((NewScale or 1.0) * 1.1, 0.5, 2.2)
     UpdateGlobalScale()
 end
 
@@ -599,6 +618,6 @@ function WindowObj:CreateTab(TabName)
     return TabElements
 end
 
-return AuraPro
+return WindowObj
 end
 return AuraPro
