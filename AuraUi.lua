@@ -1,96 +1,191 @@
 --[[
-Aura Pro UI Library - Upgraded Edition
-Features: Responsive UIScale Engine, Modern Dark Theme, Dynamic Search,
-Keybind Listener, ColorPicker, Multi-Dropdown, Notification Subsystem,
-Auto-Config Saving, and Custom Window Scaling.
+Aura Pro UI Library - Upgraded Edition with Native KeySystem
 --]]
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
-
 local LocalPlayer = Players.LocalPlayer
-
 local CachedParent = (gethui and gethui())
 or (CoreGui:FindFirstChild("RobloxGui") and CoreGui)
 or (LocalPlayer and LocalPlayer:WaitForChild("PlayerGui"))
 or CoreGui
 
--- Decommission pre-existing instance to prevent duplicates/memory leaks
 local PreexistingInstance = CachedParent:FindFirstChild("Aura_Pro_UI")
 if PreexistingInstance then
-PreexistingInstance:Destroy()
+    PreexistingInstance:Destroy()
+end
+local PreexistingKey = CachedParent:FindFirstChild("Aura_KeySystem_UI")
+if PreexistingKey then
+    PreexistingKey:Destroy()
 end
 
 local AuraPro = {}
 AuraPro.Themes = {
-Dark = {
-Background = Color3.fromRGB(18, 19, 24),
-Card = Color3.fromRGB(25, 27, 34),
-Element = Color3.fromRGB(33, 36, 46),
-Border = Color3.fromRGB(48, 52, 66),
-Text = Color3.fromRGB(240, 242, 248),
-SubText = Color3.fromRGB(145, 152, 172),
-Accent = Color3.fromRGB(99, 102, 241), -- Vibrant Indigo
-AccentHover = Color3.fromRGB(129, 140, 248),
-Success = Color3.fromRGB(34, 197, 94),
-Danger = Color3.fromRGB(239, 68, 68)
-},
-Midnight = {
-Background = Color3.fromRGB(11, 15, 25),
-Card = Color3.fromRGB(17, 23, 39),
-Element = Color3.fromRGB(24, 33, 55),
-Border = Color3.fromRGB(37, 49, 80),
-Text = Color3.fromRGB(243, 244, 246),
-SubText = Color3.fromRGB(156, 163, 175),
-Accent = Color3.fromRGB(14, 165, 233), -- Deep Sky Blue
-AccentHover = Color3.fromRGB(56, 189, 248),
-Success = Color3.fromRGB(16, 185, 129),
-Danger = Color3.fromRGB(244, 63, 94)
-}
+    Dark = {
+        Background = Color3.fromRGB(18, 19, 24),
+        Card = Color3.fromRGB(25, 27, 34),
+        Element = Color3.fromRGB(33, 36, 46),
+        Border = Color3.fromRGB(48, 52, 66),
+        Text = Color3.fromRGB(240, 242, 248),
+        SubText = Color3.fromRGB(145, 152, 172),
+        Accent = Color3.fromRGB(99, 102, 241),
+        AccentHover = Color3.fromRGB(129, 140, 248),
+        Success = Color3.fromRGB(34, 197, 94),
+        Danger = Color3.fromRGB(239, 68, 68)
+    },
+    Midnight = {
+        Background = Color3.fromRGB(11, 15, 25),
+        Card = Color3.fromRGB(17, 23, 39),
+        Element = Color3.fromRGB(24, 33, 55),
+        Border = Color3.fromRGB(37, 49, 80),
+        Text = Color3.fromRGB(243, 244, 246),
+        SubText = Color3.fromRGB(156, 163, 175),
+        Accent = Color3.fromRGB(14, 165, 233),
+        AccentHover = Color3.fromRGB(56, 189, 248),
+        Success = Color3.fromRGB(16, 185, 129),
+        Danger = Color3.fromRGB(244, 63, 94)
+    }
 }
 
---- Dragging Utility with scaling calculation safety
 local function MakeDraggable(Frame, HandleFrame)
-local Dragging = false
-local DragInput, DragStart, StartPos
+    local Dragging = false
+    local DragInput, DragStart, StartPos
 
-HandleFrame.InputBegan:Connect(function(Input)
-    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-        Dragging = true
-        DragStart = Input.Position
-        StartPos = Frame.Position
+    HandleFrame.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            Dragging = true
+            DragStart = Input.Position
+            StartPos = Frame.Position
 
-        Input.Changed:Connect(function()
-            if Input.UserInputState == Enum.UserInputState.End then
-                Dragging = false
-            end
-        end)
-    end
-end)
+            Input.Changed:Connect(function()
+                if Input.UserInputState == Enum.UserInputState.End then
+                    Dragging = false
+                end
+            end)
+        end
+    end)
 
-HandleFrame.InputChanged:Connect(function(Input)
-    if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
-        DragInput = Input
-    end
-end)
+    HandleFrame.InputChanged:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
+            DragInput = Input
+        end
+    end)
 
-UserInputService.InputChanged:Connect(function(Input)
-    if Input == DragInput and Dragging then
-        local Delta = Input.Position - DragStart
-        TweenService:Create(Frame, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-        }):Play()
-    end
-end)
-
-
+    UserInputService.InputChanged:Connect(function(Input)
+        if Input == DragInput and Dragging then
+            local Delta = Input.Position - DragStart
+            TweenService:Create(Frame, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
+            }):Play()
+        end
+    end)
 end
 
---- Instantiates primary window context with uniform responsive scaling
+--- NATIVE KEY SYSTEM FUNCTION
+function AuraPro:CreateKeySystem(Config)
+    Config = Config or {}
+    local TitleText = Config.Name or "Aura UI - Key System"
+    local CorrectKey = Config.Key or "AuraPro2026"
+    local LinkToGet = Config.Link or ""
+    local SelectedTheme = Config.Theme or AuraPro.Themes.Dark
+    local Callback = Config.Callback or function() end
+
+    local KeyGui = Instance.new("ScreenGui")
+    KeyGui.Name = "Aura_KeySystem_UI"
+    KeyGui.ResetOnSpawn = false
+    KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    KeyGui.Parent = CachedParent
+
+    local MainFrame = Instance.new("Frame", KeyGui)
+    MainFrame.Size = UDim2.new(0, 360, 0, 210)
+    MainFrame.Position = UDim2.new(0.5, -180, 0.5, -105)
+    MainFrame.BackgroundColor3 = SelectedTheme.Background
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+    local Stroke = Instance.new("UIStroke", MainFrame)
+    Stroke.Color = SelectedTheme.Border
+    Stroke.Thickness = 1.2
+
+    local TopBar = Instance.new("Frame", MainFrame)
+    TopBar.Size = UDim2.new(1, -16, 0, 36)
+    TopBar.Position = UDim2.new(0, 8, 0, 8)
+    TopBar.BackgroundColor3 = SelectedTheme.Card
+    Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 6)
+    MakeDraggable(MainFrame, TopBar)
+
+    local TitleLabel = Instance.new("TextLabel", TopBar)
+    TitleLabel.Size = UDim2.new(1, -12, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = TitleText
+    TitleLabel.TextColor3 = SelectedTheme.Text
+    TitleLabel.TextSize = 13
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local KeyBox = Instance.new("TextBox", MainFrame)
+    KeyBox.Size = UDim2.new(1, -24, 0, 38)
+    KeyBox.Position = UDim2.new(0, 12, 0, 58)
+    KeyBox.BackgroundColor3 = SelectedTheme.Element
+    KeyBox.PlaceholderText = "Enter your key here..."
+    KeyBox.PlaceholderColor3 = SelectedTheme.SubText
+    KeyBox.Text = ""
+    KeyBox.TextColor3 = SelectedTheme.Text
+    KeyBox.TextSize = 12
+    KeyBox.Font = Enum.Font.Gotham
+    Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 6)
+
+    local SubmitBtn = Instance.new("TextButton", MainFrame)
+    SubmitBtn.Size = UDim2.new(1, -24, 0, 36)
+    SubmitBtn.Position = UDim2.new(0, 12, 0, 106)
+    SubmitBtn.BackgroundColor3 = SelectedTheme.Accent
+    SubmitBtn.Text = "SUBMIT KEY"
+    SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SubmitBtn.TextSize = 12
+    SubmitBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 6)
+
+    local GetKeyBtn = Instance.new("TextButton", MainFrame)
+    GetKeyBtn.Size = UDim2.new(1, -24, 0, 32)
+    GetKeyBtn.Position = UDim2.new(0, 12, 0, 150)
+    GetKeyBtn.BackgroundColor3 = SelectedTheme.Element
+    GetKeyBtn.Text = "GET KEY"
+    GetKeyBtn.TextColor3 = SelectedTheme.SubText
+    GetKeyBtn.TextSize = 11
+    GetKeyBtn.Font = Enum.Font.GothamMedium
+    Instance.new("UICorner", GetKeyBtn).CornerRadius = UDim.new(0, 6)
+
+    SubmitBtn.MouseButton1Click:Connect(function()
+        if KeyBox.Text == CorrectKey then
+            SubmitBtn.Text = "SUCCESS!"
+            SubmitBtn.BackgroundColor3 = SelectedTheme.Success
+            task.wait(0.5)
+            KeyGui:Destroy()
+            pcall(Callback)
+        else
+            SubmitBtn.Text = "INVALID KEY!"
+            SubmitBtn.BackgroundColor3 = SelectedTheme.Danger
+            task.wait(1)
+            SubmitBtn.Text = "SUBMIT KEY"
+            SubmitBtn.BackgroundColor3 = SelectedTheme.Accent
+        end
+    end)
+
+    GetKeyBtn.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard(LinkToGet)
+            GetKeyBtn.Text = "COPIED LINK TO CLIPBOARD!"
+            task.wait(2)
+            GetKeyBtn.Text = "GET KEY"
+        else
+            GetKeyBtn.Text = "Executor does not support clipboard"
+        end
+    end)
+end
+
 function AuraPro:CreateWindow(Config)
 Config = Config or {}
 local TitleText = Config.Name or "Aura UI Pro"
@@ -118,14 +213,12 @@ local function SaveCurrentConfig()
     end
 end
 
--- Primary ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "Aura_Pro_UI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = CachedParent
 
--- Notification Container (Root level)
 local NotifContainer = Instance.new("Frame", ScreenGui)
 NotifContainer.Name = "NotifContainer"
 NotifContainer.Size = UDim2.new(0, 300, 1, -20)
@@ -187,7 +280,6 @@ function AuraPro:Notify(NotifConfig)
     end)
 end
 
--- Primary Window Frame
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, BaseWidth, 0, BaseHeight)
@@ -200,8 +292,6 @@ local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Color = SelectedTheme.Border
 MainStroke.Thickness = 1.2
 
--- UNIFORM UI SCALE ENGINE
--- All components inside MainFrame automatically scale proportionally according to MainUIScale!
 local MainUIScale = Instance.new("UIScale", MainFrame)
 
 local function UpdateGlobalScale()
@@ -221,7 +311,6 @@ if Workspace.CurrentCamera then
     Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateGlobalScale)
 end
 
--- Top Navigation Bar
 local TopBar = Instance.new("Frame", MainFrame)
 TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, -20, 0, 42)
@@ -241,7 +330,6 @@ TitleLabel.TextSize = 14
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Window Action Controls (Minimize & Close)
 local ControlsContainer = Instance.new("Frame", TopBar)
 ControlsContainer.Size = UDim2.new(0, 70, 1, 0)
 ControlsContainer.Position = UDim2.new(1, -75, 0, 0)
@@ -300,7 +388,6 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Tab Navigation Container
 local TabBarWidth = 150
 local TabBar = Instance.new("Frame", MainFrame)
 TabBar.Size = UDim2.new(0, TabBarWidth, 1, -65)
@@ -308,7 +395,6 @@ TabBar.Position = UDim2.new(0, 10, 0, 58)
 TabBar.BackgroundColor3 = SelectedTheme.Card
 Instance.new("UICorner", TabBar).CornerRadius = UDim.new(0, 8)
 
--- Tab Search Filter Input
 local SearchBox = Instance.new("TextBox", TabBar)
 SearchBox.Size = UDim2.new(1, -12, 0, 26)
 SearchBox.Position = UDim2.new(0, 6, 0, 6)
@@ -345,7 +431,6 @@ Instance.new("UICorner", PagesArea).CornerRadius = UDim.new(0, 8)
 
 local WindowObj = { CurrentTab = nil, Tabs = {} }
 
---- Dynamic Window Scale Modifier
 function WindowObj:SetScale(NewScale)
     UserScale = math.clamp(NewScale or 1.0, 0.5, 2.0)
     UpdateGlobalScale()
@@ -408,7 +493,6 @@ function WindowObj:CreateTab(TabName)
 
     table.insert(WindowObj.Tabs, { Btn = TabBtn, Page = PageFrame, Name = TabName })
 
-    -- Realtime UI Search Filter
     SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
         local Query = string.lower(SearchBox.Text)
         for _, Element in ipairs(PageFrame:GetChildren()) do
@@ -455,16 +539,7 @@ function WindowObj:CreateTab(TabName)
         local Stroke = Instance.new("UIStroke", Btn)
         Stroke.Color = SelectedTheme.Border
 
-        Btn.MouseEnter:Connect(function()
-            TweenService:Create(Btn, TweenInfo.new(0.15), {BackgroundColor3 = SelectedTheme.Border}):Play()
-        end)
-        Btn.MouseLeave:Connect(function()
-            TweenService:Create(Btn, TweenInfo.new(0.15), {BackgroundColor3 = SelectedTheme.Element}):Play()
-        end)
         Btn.MouseButton1Click:Connect(function()
-            TweenService:Create(Btn, TweenInfo.new(0.08), {Size = UDim2.new(0.96, 0, 0, 34)}):Play()
-            task.wait(0.08)
-            TweenService:Create(Btn, TweenInfo.new(0.08), {Size = UDim2.new(0.98, 0, 0, 36)}):Play()
             pcall(Callback)
         end)
     end
@@ -521,195 +596,9 @@ function WindowObj:CreateTab(TabName)
         if Toggled then pcall(Callback, Toggled) end
     end
 
-    function TabElements:CreateSlider(Config)
-        local Name = Config.Name or "Slider"
-        local Flag = Config.Flag or Name
-        local Min = Config.Min or 0
-        local Max = Config.Max or 100
-        local Default = SavedData[Flag] ~= nil and SavedData[Flag] or (Config.Default or Min)
-        local Callback = Config.Callback or function() end
-
-        local Value = Default
-        local Sliding = false
-        SavedData[Flag] = Value
-
-        local SliderFrame = Instance.new("Frame", PageFrame)
-        SliderFrame.Size = UDim2.new(0.98, 0, 0, 48)
-        SliderFrame.BackgroundColor3 = SelectedTheme.Element
-        Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 6)
-        local Stroke = Instance.new("UIStroke", SliderFrame)
-        Stroke.Color = SelectedTheme.Border
-
-        local Label = Instance.new("TextLabel", SliderFrame)
-        Label.Size = UDim2.new(1, -60, 0, 22)
-        Label.Position = UDim2.new(0, 10, 0, 2)
-        Label.BackgroundTransparency = 1
-        Label.Text = Name
-        Label.TextColor3 = SelectedTheme.Text
-        Label.TextSize = 12
-        Label.Font = Enum.Font.GothamMedium
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local ValLabel = Instance.new("TextLabel", SliderFrame)
-        ValLabel.Size = UDim2.new(0, 50, 0, 22)
-        ValLabel.Position = UDim2.new(1, -55, 0, 2)
-        ValLabel.BackgroundTransparency = 1
-        ValLabel.Text = tostring(Value)
-        ValLabel.TextColor3 = SelectedTheme.Accent
-        ValLabel.TextSize = 12
-        ValLabel.Font = Enum.Font.GothamBold
-
-        local Bar = Instance.new("Frame", SliderFrame)
-        Bar.Size = UDim2.new(0.92, 0, 0, 6)
-        Bar.Position = UDim2.new(0.04, 0, 0.7, 0)
-        Bar.BackgroundColor3 = SelectedTheme.Border
-        Instance.new("UICorner", Bar).CornerRadius = UDim.new(1, 0)
-
-        local Fill = Instance.new("Frame", Bar)
-        Fill.Size = UDim2.new((Value - Min)/(Max - Min), 0, 1, 0)
-        Fill.BackgroundColor3 = SelectedTheme.Accent
-        Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-
-        local function Update(Input)
-            local Pos = math.clamp((Input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-            Value = math.floor(Min + (Max - Min) * Pos)
-            ValLabel.Text = tostring(Value)
-            TweenService:Create(Fill, TweenInfo.new(0.08), {Size = UDim2.new(Pos, 0, 1, 0)}):Play()
-            SavedData[Flag] = Value
-            SaveCurrentConfig()
-            pcall(Callback, Value)
-        end
-
-        Bar.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Sliding = true
-                Update(Input)
-            end
-        end)
-
-        UserInputService.InputEnded:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Sliding = false
-            end
-        end)
-
-        UserInputService.InputChanged:Connect(function(Input)
-            if Sliding and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-                Update(Input)
-            end
-        end)
-    end
-
-    function TabElements:CreateKeybind(Config)
-        local Name = Config.Name or "Keybind"
-        local Flag = Config.Flag or Name
-        local DefaultKey = SavedData[Flag] or Config.Default or Enum.KeyCode.E
-        local Callback = Config.Callback or function() end
-
-        SavedData[Flag] = tostring(DefaultKey)
-
-        local BindFrame = Instance.new("Frame", PageFrame)
-        BindFrame.Size = UDim2.new(0.98, 0, 0, 36)
-        BindFrame.BackgroundColor3 = SelectedTheme.Element
-        Instance.new("UICorner", BindFrame).CornerRadius = UDim.new(0, 6)
-        local Stroke = Instance.new("UIStroke", BindFrame)
-        Stroke.Color = SelectedTheme.Border
-
-        local Label = Instance.new("TextLabel", BindFrame)
-        Label.Size = UDim2.new(0.6, 0, 1, 0)
-        Label.Position = UDim2.new(0, 10, 0, 0)
-        Label.BackgroundTransparency = 1
-        Label.Text = Name
-        Label.TextColor3 = SelectedTheme.Text
-        Label.TextSize = 12
-        Label.Font = Enum.Font.GothamMedium
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local KeyBtn = Instance.new("TextButton", BindFrame)
-        KeyBtn.Size = UDim2.new(0, 80, 0, 24)
-        KeyBtn.Position = UDim2.new(1, -88, 0.5, -12)
-        KeyBtn.BackgroundColor3 = SelectedTheme.Card
-        KeyBtn.Text = typeof(DefaultKey) == "EnumItem" and DefaultKey.Name or tostring(DefaultKey)
-        KeyBtn.TextColor3 = SelectedTheme.Accent
-        KeyBtn.TextSize = 11
-        KeyBtn.Font = Enum.Font.GothamBold
-        Instance.new("UICorner", KeyBtn).CornerRadius = UDim.new(0, 4)
-
-        local Listening = false
-        KeyBtn.MouseButton1Click:Connect(function()
-            Listening = true
-            KeyBtn.Text = "Press key..."
-        end)
-
-        UserInputService.InputBegan:Connect(function(Input, Processed)
-            if Listening and not Processed and Input.UserInputType == Enum.UserInputType.Keyboard then
-                Listening = false
-                KeyBtn.Text = Input.KeyCode.Name
-                SavedData[Flag] = Input.KeyCode.Name
-                SaveCurrentConfig()
-                pcall(Callback, Input.KeyCode)
-            end
-        end)
-    end
-
-    function TabElements:CreateColorpicker(Config)
-        local Name = Config.Name or "Colorpicker"
-        local Flag = Config.Flag or Name
-        local DefaultColor = Config.Default or Color3.fromRGB(99, 102, 241)
-        local Callback = Config.Callback or function() end
-
-        local ColorFrame = Instance.new("Frame", PageFrame)
-        ColorFrame.Size = UDim2.new(0.98, 0, 0, 36)
-        ColorFrame.BackgroundColor3 = SelectedTheme.Element
-        Instance.new("UICorner", ColorFrame).CornerRadius = UDim.new(0, 6)
-        local Stroke = Instance.new("UIStroke", ColorFrame)
-        Stroke.Color = SelectedTheme.Border
-
-        local Label = Instance.new("TextLabel", ColorFrame)
-        Label.Size = UDim2.new(0.6, 0, 1, 0)
-        Label.Position = UDim2.new(0, 10, 0, 0)
-        Label.BackgroundTransparency = 1
-        Label.Text = Name
-        Label.TextColor3 = SelectedTheme.Text
-        Label.TextSize = 12
-        Label.Font = Enum.Font.GothamMedium
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local Preview = Instance.new("TextButton", ColorFrame)
-        Preview.Size = UDim2.new(0, 30, 0, 20)
-        Preview.Position = UDim2.new(1, -38, 0.5, -10)
-        Preview.BackgroundColor3 = DefaultColor
-        Preview.Text = ""
-        Instance.new("UICorner", Preview).CornerRadius = UDim.new(0, 4)
-
-        Preview.MouseButton1Click:Connect(function()
-            -- Cycles through predefined vibrant accent colors for demonstration palette
-            local Presets = {
-                Color3.fromRGB(99, 102, 241),
-                Color3.fromRGB(34, 197, 94),
-                Color3.fromRGB(239, 68, 68),
-                Color3.fromRGB(234, 179, 8),
-                Color3.fromRGB(168, 85, 247)
-            }
-            local NextIdx = 1
-            for idx, col in ipairs(Presets) do
-                if col == Preview.BackgroundColor3 then
-                    NextIdx = (idx % #Presets) + 1
-                    break
-                end
-            end
-            local NewColor = Presets[NextIdx]
-            Preview.BackgroundColor3 = NewColor
-            pcall(Callback, NewColor)
-        end)
-    end
-
     return TabElements
 end
 
-return WindowObj
-
-
+return AuraPro
 end
-
 return AuraPro
