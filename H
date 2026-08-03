@@ -1,11 +1,11 @@
 getgenv().TDX_Config = getgenv().TDX_Config or {
-    AutoSkip = true,
+    AutoSkip = false,
     SkipDelay = 0,
-    AutoSpeed = true,
-    AutoDifficulty = true,
-    SelectedDifficulty = "Expert",
-    AutoJoin = true,
-    TargetMap = "CHALET",
+    AutoSpeed = false,
+    AutoDifficulty = false,
+    SelectedDifficulty = "",
+    AutoJoin = false,
+    TargetMap = "",
     MacroName = "",
     AutoPlayMacro = true,
     RecordMacro = false
